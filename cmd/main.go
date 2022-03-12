@@ -27,9 +27,9 @@ func main() {
 }
 
 //! - TODO:
-//!Add Gorm ORM
-//!Add all Routes
-//!Add logic for routes
+//Add Gorm ORM
+//Add all Routes
+//Add logic for routes
 //!Add tests
 //!Dockerize
 //!Vue frontend and host on netlify

@@ -1,9 +1,9 @@
 package database
 
 import (
-	"database/sql"
-
 	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 const (
@@ -11,16 +11,18 @@ const (
 	DB_NAME = "./sample.db"
 )
 
-/*import (
-	"gorm.io/gorm"
-	"gorm.io/driver/sqlite"
-  )*/
+func Connect() (*gorm.DB, error) {
 
-func Connect() (*sql.DB, error) {
+	db, err := gorm.Open(sqlite.Open(DB_NAME), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
 
-	db, err := sql.Open(DB_TYPE, DB_NAME)
+	return db, err
+
+	/*db, err := sql.Open(DB_TYPE, DB_NAME)
 	if err != nil {
 		return db, err
 	}
-	return db, nil
+	return db, nil*/
 }

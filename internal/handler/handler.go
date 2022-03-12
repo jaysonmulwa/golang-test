@@ -2,8 +2,8 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/jaysonmulwa/jumia/internal/customer"
@@ -28,13 +28,41 @@ func NewHandler(customer *customer.CustomerService) *Handler {
 func (h *Handler) SetupRoutes() {
 
 	h.Router = mux.NewRouter()
-	h.Router.HandleFunc("/customers", h.GetCustomers).Methods("GET")
+	h.Router.HandleFunc("/customers/{country}/{validity}", h.GetCustomers).Methods("GET")
+	h.Router.HandleFunc("/customers/{country}/{validity}/{page}", h.GetPaginatedCustomers).Methods("GET")
 }
 
 func (h *Handler) GetCustomers(w http.ResponseWriter, r *http.Request) {
 
-	customers, err := h.Customer.GetCustomers()
-	fmt.Println(customers)
+	vars := mux.Vars(r)
+	country := vars["country"]
+	validity := vars["validity"]
+
+	customers, err := h.Customer.GetCustomers(country, validity)
+	if err != nil {
+		sendErrorResponse(w, "Error", err)
+		return
+	}
+
+	if err = sendOkResponse(w, customers); err != nil {
+		panic(err)
+	}
+
+}
+
+func (h *Handler) GetPaginatedCustomers(w http.ResponseWriter, r *http.Request) {
+
+	vars := mux.Vars(r)
+	country := vars["country"]
+	validity := vars["validity"]
+	page := vars["page"]
+
+	_page, err := strconv.ParseInt(page, 10, 64)
+	if err != nil {
+		sendErrorResponse(w, "Unable to parse requested Page", err)
+	}
+
+	customers, err := h.Customer.GetPaginatedCustomers(country, validity, int(_page))
 	if err != nil {
 		sendErrorResponse(w, "Error", err)
 		return

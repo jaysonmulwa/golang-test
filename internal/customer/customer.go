@@ -1,62 +1,105 @@
 package customer
 
 import (
-	"database/sql"
-	"fmt"
+	"regexp"
+
+	"gorm.io/gorm"
 )
 
 type CustomerService struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
 type Customer struct {
-	id    int
-	name  string
-	phone string
+	ID    uint
+	Name  string
+	Phone string
+}
+
+type CustomerExtra struct {
+	Customer    Customer
+	Country     string
+	Valid       bool
+	Code        string
+	PhoneSuffix string
 }
 
 type CustomerInterface interface {
-	GetCustomers() ([]Customer, error)
+	GetCustomers(Country string, Validity string) ([]Customer, error)
+	GetPaginatedCustomers(Country string, validity string, Page int) ([]Customer, error)
 }
 
-func NewCustomerService(db *sql.DB) *CustomerService {
+var codes = map[string]string{
+	"237": "Cameroon",
+	"251": "Ethiopia",
+	"212": "Morocco",
+	"258": "Mozambique",
+	"256": "Uganda",
+}
+
+var regexes = map[string]string{
+	"Cameroon":   "\\(237\\)\\ ?[2368]\\d{7,8}$",
+	"Ethiopia":   "\\(251\\)\\ ?[1-59]\\d{8}$",
+	"Morocco":    "\\(212\\)\\ ?[5-9]\\d{8}$",
+	"Mozambique": "\\(258\\)\\ ?[28]\\d{7,8}$",
+	"Uganda":     "\\(256\\)\\ ?\\d{9}$",
+}
+
+func NewCustomerService(db *gorm.DB) *CustomerService {
 	return &CustomerService{
 		db: db,
 	}
 }
 
-func (c *CustomerService) GetCustomers() ([]Customer, error) {
+func (c *CustomerService) GetCustomers(Country string, Validity string) ([]CustomerExtra, error) {
 
-	rows, _ := c.db.Query("SELECT id, name, phone FROM  customer")
-	for rows.Next() {
-		var id int
-		var name string
-		var phone string
-		rows.Scan(&id, &name, &phone)
-		fmt.Println(id, name, phone)
+	var customer []Customer
+	var customerWithExtraFields []CustomerExtra
+	if err := c.db.Table("customer").Find(&customer).Error; err != nil {
+		return nil, err
 	}
+	customerWithExtraFields = makeNewCustomer(customer, customerWithExtraFields)
+	return customerWithExtraFields, nil
 
-	customers := []Customer{
-		{id: 1, name: "John", phone: "0712345678"},
-		{id: 2, name: "Jane", phone: "0712345678"},
-		{id: 3, name: "Jack", phone: "0712345678"},
+}
+
+func (c *CustomerService) GetPaginatedCustomers(Country string, validity string, Page int) ([]CustomerExtra, error) {
+
+	var customer []Customer
+	var customerWithExtraFields []CustomerExtra
+	if err := c.db.Table("customer").Find(&customer).Error; err != nil {
+		return nil, err
 	}
-
-	return customers, nil
-
+	customerWithExtraFields = makeNewCustomer(customer, customerWithExtraFields)
+	return customerWithExtraFields, nil
 }
 
-/*func filter() {
-	//By Country
-	//By Validity of Phone Number
-	//Pagination
+func makeNewCustomer(customer []Customer, newCustomer []CustomerExtra) []CustomerExtra {
+	for _, customer := range customer {
+		validity, country, code := resolver(customer.Phone)
+		new := CustomerExtra{
+			Customer:    customer,
+			Country:     country,
+			Valid:       validity,
+			Code:        code,
+			PhoneSuffix: customer.Phone[6:],
+		}
+		newCustomer = append(newCustomer, new)
+	}
+	return newCustomer
 }
 
-func resolveCountry() {
-
+func resolver(phone string) (bool, string, string) {
+	country, code := resolveCountry(phone)
+	regex := regexes[country]
+	r, _ := regexp.Compile(regex)
+	return r.MatchString(phone), country, code
 }
 
-func validateNumber() {
-
+func resolveCountry(phone string) (string, string) {
+	code := phone[1:4]
+	if country, ok := codes[code]; ok {
+		return country, code
+	}
+	return "Unknown", code
 }
-*/
