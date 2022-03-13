@@ -19,10 +19,4 @@ func Connect() (*gorm.DB, error) {
 	}
 
 	return db, err
-
-	/*db, err := sql.Open(DB_TYPE, DB_NAME)
-	if err != nil {
-		return db, err
-	}
-	return db, nil*/
 }

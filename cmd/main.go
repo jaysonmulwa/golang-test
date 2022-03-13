@@ -26,11 +26,19 @@ func main() {
 	}
 }
 
-//! - TODO:
+/*
 //Add Gorm ORM
 //Add all Routes
 //Add logic for routes
-//!Add tests
-//!Dockerize
+//Add tests
+
+//!Dockerize, deploy to Heroku/DigitalOceam
 //!Vue frontend and host on netlify
-//!Submit with deployment instructons
+//!Submit with deployment
+
+//!Refactor code for testability
+//!Add more testa
+
+
+
+valid - ok, Nok, all*/

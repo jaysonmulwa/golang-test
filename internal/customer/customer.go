@@ -2,6 +2,7 @@ package customer
 
 import (
 	"regexp"
+	"strconv"
 
 	"gorm.io/gorm"
 )
@@ -25,7 +26,8 @@ type CustomerExtra struct {
 }
 
 type CustomerInterface interface {
-	GetCustomers(Country string, Validity string) ([]Customer, error)
+	GetAllCustomers() ([]Customer, error)
+	GetCustomersByParams(Country string, Validity string) ([]Customer, error)
 	GetPaginatedCustomers(Country string, validity string, Page int) ([]Customer, error)
 }
 
@@ -45,38 +47,54 @@ var regexes = map[string]string{
 	"Uganda":     "\\(256\\)\\ ?\\d{9}$",
 }
 
+const (
+	PAGINATION_LIMIT = 10
+)
+
 func NewCustomerService(db *gorm.DB) *CustomerService {
 	return &CustomerService{
 		db: db,
 	}
 }
 
-func (c *CustomerService) GetCustomers(Country string, Validity string) ([]CustomerExtra, error) {
+func (c *CustomerService) GetAllCustomers() ([]CustomerExtra, error) {
 
 	var customer []Customer
 	var customerWithExtraFields []CustomerExtra
 	if err := c.db.Table("customer").Find(&customer).Error; err != nil {
 		return nil, err
 	}
-	customerWithExtraFields = makeNewCustomer(customer, customerWithExtraFields)
+	customerWithExtraFields = makeNewCustomer(customer, customerWithExtraFields, "", "")
 	return customerWithExtraFields, nil
 
 }
 
-func (c *CustomerService) GetPaginatedCustomers(Country string, validity string, Page int) ([]CustomerExtra, error) {
+func (c *CustomerService) GetCustomersByParams(Country string, Validity string) ([]CustomerExtra, error) {
 
 	var customer []Customer
 	var customerWithExtraFields []CustomerExtra
 	if err := c.db.Table("customer").Find(&customer).Error; err != nil {
 		return nil, err
 	}
-	customerWithExtraFields = makeNewCustomer(customer, customerWithExtraFields)
+	customerWithExtraFields = makeNewCustomer(customer, customerWithExtraFields, Country, Validity)
+	return customerWithExtraFields, nil
+
+}
+
+func (c *CustomerService) GetPaginatedCustomers(Country string, Validity string, Page int) ([]CustomerExtra, error) {
+
+	var customer []Customer
+	var customerWithExtraFields []CustomerExtra
+	if err := c.db.Table("customer").Find(&customer).Error; err != nil {
+		return nil, err
+	}
+	customerWithExtraFields = makeNewCustomer(customer, customerWithExtraFields, Country, Validity)
 	return customerWithExtraFields, nil
 }
 
-func makeNewCustomer(customer []Customer, newCustomer []CustomerExtra) []CustomerExtra {
+func makeNewCustomer(customer []Customer, newCustomer []CustomerExtra, CountryParam string, ValidityParam string) []CustomerExtra {
 	for _, customer := range customer {
-		validity, country, code := resolver(customer.Phone)
+		validity, country, code := Resolver(customer.Phone)
 		new := CustomerExtra{
 			Customer:    customer,
 			Country:     country,
@@ -84,19 +102,26 @@ func makeNewCustomer(customer []Customer, newCustomer []CustomerExtra) []Custome
 			Code:        code,
 			PhoneSuffix: customer.Phone[6:],
 		}
-		newCustomer = append(newCustomer, new)
+
+		if CountryParam == country || CountryParam == "all" {
+			vParam, _ := strconv.ParseBool(ValidityParam)
+			if (vParam && validity) || (!vParam && !validity) || ValidityParam == "all" {
+				newCustomer = append(newCustomer, new)
+			}
+		}
+
 	}
 	return newCustomer
 }
 
-func resolver(phone string) (bool, string, string) {
-	country, code := resolveCountry(phone)
+func Resolver(phone string) (bool, string, string) {
+	country, code := ResolveCountry(phone)
 	regex := regexes[country]
 	r, _ := regexp.Compile(regex)
 	return r.MatchString(phone), country, code
 }
 
-func resolveCountry(phone string) (string, string) {
+func ResolveCountry(phone string) (string, string) {
 	code := phone[1:4]
 	if country, ok := codes[code]; ok {
 		return country, code

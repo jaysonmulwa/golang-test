@@ -28,17 +28,32 @@ func NewHandler(customer *customer.CustomerService) *Handler {
 func (h *Handler) SetupRoutes() {
 
 	h.Router = mux.NewRouter()
-	h.Router.HandleFunc("/customers/{country}/{validity}", h.GetCustomers).Methods("GET")
+	h.Router.HandleFunc("/customers", h.GetAllCustomers).Methods("GET")
+	h.Router.HandleFunc("/customers/{country}/{validity}", h.GetCustomersByParams).Methods("GET")
 	h.Router.HandleFunc("/customers/{country}/{validity}/{page}", h.GetPaginatedCustomers).Methods("GET")
 }
 
-func (h *Handler) GetCustomers(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetAllCustomers(w http.ResponseWriter, r *http.Request) {
+
+	customers, err := h.Customer.GetAllCustomers()
+	if err != nil {
+		sendErrorResponse(w, "Error", err)
+		return
+	}
+
+	if err = sendOkResponse(w, customers); err != nil {
+		panic(err)
+	}
+
+}
+
+func (h *Handler) GetCustomersByParams(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	country := vars["country"]
 	validity := vars["validity"]
 
-	customers, err := h.Customer.GetCustomers(country, validity)
+	customers, err := h.Customer.GetCustomersByParams(country, validity)
 	if err != nil {
 		sendErrorResponse(w, "Error", err)
 		return
