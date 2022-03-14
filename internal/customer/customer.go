@@ -89,7 +89,7 @@ func (c *CustomerService) GetPaginatedCustomers(Country string, Validity string,
 		return nil, err
 	}
 	customerWithExtraFields = makeNewCustomer(customer, customerWithExtraFields, Country, Validity)
-	return customerWithExtraFields, nil
+	return Paginate(customerWithExtraFields, Page), nil
 }
 
 func makeNewCustomer(customer []Customer, newCustomer []CustomerExtra, CountryParam string, ValidityParam string) []CustomerExtra {
@@ -112,6 +112,22 @@ func makeNewCustomer(customer []Customer, newCustomer []CustomerExtra, CountryPa
 
 	}
 	return newCustomer
+}
+
+func Paginate(customer []CustomerExtra, Page int) []CustomerExtra {
+	if Page <= 0 {
+		return customer
+	}
+
+	len_customer := len(customer)
+	last_record := PAGINATION_LIMIT * Page
+
+	if last_record < len_customer {
+		return customer[PAGINATION_LIMIT*(Page-1) : PAGINATION_LIMIT*Page]
+	}
+
+	return customer[PAGINATION_LIMIT*(Page-1):]
+
 }
 
 func Resolver(phone string) (bool, string, string) {
